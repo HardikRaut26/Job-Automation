@@ -50,6 +50,7 @@ async function seedDatabase() {
         openaiApiKey: process.env.OPENAI_API_KEY || "",
         automationMode: "co-pilot",
         headlessMode: false,
+        useActiveBrowser: false,
         scheduleInterval: "manual"
       }
     });
@@ -72,7 +73,7 @@ app.get("/api/settings", async (req, res) => {
 
 app.post("/api/settings", async (req, res) => {
   try {
-    const { geminiApiKey, openaiApiKey, notificationType, notificationToken, notificationChatId, automationMode, headlessMode, scheduleInterval } = req.body;
+    const { geminiApiKey, openaiApiKey, notificationType, notificationToken, notificationChatId, automationMode, headlessMode, useActiveBrowser, scheduleInterval } = req.body;
     const settings = await prisma.globalSettings.update({
       where: { id: "global_config" },
       data: {
@@ -83,6 +84,7 @@ app.post("/api/settings", async (req, res) => {
         notificationChatId,
         automationMode,
         headlessMode,
+        useActiveBrowser,
         scheduleInterval
       }
     });

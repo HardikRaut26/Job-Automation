@@ -20,6 +20,7 @@ interface SettingsData {
   notificationChatId: string;
   automationMode: string;
   headlessMode: boolean;
+  useActiveBrowser: boolean;
   scheduleInterval: string;
 }
 
@@ -32,6 +33,7 @@ export default function SettingsPage() {
     notificationChatId: "",
     automationMode: "co-pilot",
     headlessMode: false,
+    useActiveBrowser: false,
     scheduleInterval: "manual"
   });
 
@@ -52,6 +54,7 @@ export default function SettingsPage() {
           notificationChatId: data.notificationChatId || "",
           automationMode: data.automationMode || "co-pilot",
           headlessMode: data.headlessMode ?? false,
+          useActiveBrowser: data.useActiveBrowser ?? false,
           scheduleInterval: data.scheduleInterval || "manual"
         });
         setLoading(false);
@@ -213,6 +216,27 @@ export default function SettingsPage() {
                 <span className="text-sm font-semibold text-gray-300 block">Run in Background (Headless)</span>
                 <span className="text-[10px] text-gray-500">
                   Hides the Chromium browser window. Force disabled in Co-Pilot mode to allow captcha solving.
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* CDP Attachment Toggle */}
+          <div className="space-y-3">
+            <label className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">Browser Session Integration</label>
+            <div className="flex items-center space-x-3 bg-gray-900/20 border border-gray-800/60 p-4 rounded-xl">
+              <input
+                type="checkbox"
+                name="useActiveBrowser"
+                id="useActiveBrowser"
+                checked={settings.useActiveBrowser}
+                onChange={handleCheckboxChange}
+                className="h-4 w-4 text-indigo-600 border-gray-800 rounded focus:ring-indigo-500 cursor-pointer bg-gray-900"
+              />
+              <label htmlFor="useActiveBrowser" className="cursor-pointer">
+                <span className="text-sm font-semibold text-gray-300 block">Use Active Chrome Browser (CDP)</span>
+                <span className="text-[10px] text-gray-500">
+                  Connects to your active personal Chrome on port 9222. Reuses your active logins and sessions!
                 </span>
               </label>
             </div>

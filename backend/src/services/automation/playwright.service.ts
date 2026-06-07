@@ -33,18 +33,36 @@ export class PlaywrightService {
       fs.mkdirSync(userDataDir, { recursive: true });
     }
 
-    log(`Launching browser in ${isCoPilot ? "Co-Pilot (Visual)" : "Autonomous"} mode (Headless: ${headless})...`);
-
     let context: BrowserContext | null = null;
+    let browserCDP: any = null;
+
     try {
-      context = await chromium.launchPersistentContext(userDataDir, {
-        headless: headless,
-        viewport: { width: 1280, height: 800 },
-        args: [
-          "--disable-blink-features=AutomationControlled", // Evades simple bot checks
-          "--start-maximized"
-        ]
-      });
+      if (settings.useActiveBrowser) {
+        log("Connecting to active Chrome browser on http://localhost:9222...");
+        try {
+          browserCDP = await chromium.connectOverCDP("http://localhost:9222");
+          const contexts = browserCDP.contexts();
+          context = contexts.length > 0 ? contexts[0] : null;
+          if (!context) {
+            throw new Error("No active browser context found. Make sure Chrome is open with remote-debugging port 9222.");
+          }
+          log("Successfully attached to active browser session!");
+        } catch (cdpErr) {
+          log(`Failed to connect to active browser: ${(cdpErr as Error).message}. Falling back to launching dedicated context...`, true);
+        }
+      }
+
+      if (!context) {
+        log(`Launching browser in ${isCoPilot ? "Co-Pilot (Visual)" : "Autonomous"} mode (Headless: ${headless})...`);
+        context = await chromium.launchPersistentContext(userDataDir, {
+          headless: headless,
+          viewport: { width: 1280, height: 800 },
+          args: [
+            "--disable-blink-features=AutomationControlled", // Evades simple bot checks
+            "--start-maximized"
+          ]
+        });
+      }
 
       const pages = context.pages();
       const page = pages.length > 0 ? pages[0] : await context.newPage();
@@ -89,18 +107,23 @@ export class PlaywrightService {
       if (isCoPilot) {
         log("Co-Pilot finished filling the form! Review the browser window to confirm, solve any captchas, and submit.");
         
-        // Wait for the browser context to close (the user finishes and closes the tab)
+        // Wait for the page to close (user finishes and closes the tab)
         return new Promise<PlaywrightRunResult>((resolve) => {
-          context?.on("close", () => {
-            log("Co-Pilot browser window closed.");
-            resolve({ success: true });
-          });
-          
-          // Fallback resolve if tab is closed or navigation happens
-          page.on("close", () => {
-            log("Application page tab closed.");
-            resolve({ success: true });
-          });
+          if (browserCDP) {
+            page.on("close", () => {
+              log("Application tab closed.");
+              resolve({ success: true });
+            });
+          } else {
+            context?.on("close", () => {
+              log("Co-Pilot browser window closed.");
+              resolve({ success: true });
+            });
+            page.on("close", () => {
+              log("Application page tab closed.");
+              resolve({ success: true });
+            });
+          }
         });
       } else {
         // Autonomous Mode: Try to submit the form
@@ -111,18 +134,29 @@ export class PlaywrightService {
           await submitBtn.click();
           log("Submit clicked. Waiting for confirmation page...");
           await page.waitForTimeout(5000); // Wait for submission
-          await context.close();
+          if (browserCDP) {
+            await page.close().catch(() => {});
+          } else {
+            await context.close();
+          }
           return { success: true };
         } else {
           log("Could not find submit button automatically. Browser kept open for review.", true);
-          await context.close();
+          if (browserCDP) {
+            await page.close().catch(() => {});
+          } else {
+            await context.close();
+          }
           return { success: false, error: "Submit button not found." };
         }
       }
 
     } catch (err) {
       log(`Automation Error: ${(err as Error).message}`, true);
-      if (context) {
+      if (browserCDP) {
+        // In CDP mode, don't kill client's browser, just attempt closing the page
+        // page might already be closed
+      } else if (context) {
         await context.close().catch(() => {});
       }
       return { success: false, error: (err as Error).message };

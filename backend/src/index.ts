@@ -291,6 +291,20 @@ app.patch("/api/jobs/:id/status", async (req, res) => {
   }
 });
 
+app.patch("/api/jobs/:id/notes", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    const updatedJob = await prisma.job.update({
+      where: { id },
+      data: { notes }
+    });
+    res.json(updatedJob);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update job notes" });
+  }
+});
+
 app.get("/api/jobs/:id/logs", async (req, res) => {
   try {
     const { id } = req.params;

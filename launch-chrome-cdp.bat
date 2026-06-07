@@ -4,11 +4,7 @@ echo ===================================================
 echo   AppPilot Chrome CDP Remote Debugging Launcher
 echo ===================================================
 echo.
-echo [1/2] Closing all existing Chrome instances to free up port 9222...
-taskkill /f /im chrome.exe 2>nul
-timeout /t 1 /nobreak >nul
-
-echo [2/2] Launching Google Chrome in debugging mode...
+echo Launching Google Chrome in remote debugging mode on port 9222...
 
 :: Check standard Chrome installation paths
 set "CHROME_PATH="

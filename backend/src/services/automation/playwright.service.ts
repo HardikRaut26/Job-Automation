@@ -55,6 +55,7 @@ export class PlaywrightService {
       if (!context) {
         log(`Launching browser in ${isCoPilot ? "Co-Pilot (Visual)" : "Autonomous"} mode (Headless: ${headless})...`);
         context = await chromium.launchPersistentContext(userDataDir, {
+          channel: "chrome",
           headless: headless,
           viewport: { width: 1280, height: 800 },
           args: [

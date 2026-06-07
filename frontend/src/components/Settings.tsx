@@ -235,8 +235,11 @@ export default function SettingsPage() {
               />
               <label htmlFor="useActiveBrowser" className="cursor-pointer">
                 <span className="text-sm font-semibold text-gray-300 block">Use Active Chrome Browser (CDP)</span>
-                <span className="text-[10px] text-gray-500">
+                <span className="text-[10px] text-gray-500 block">
                   Connects to your active personal Chrome on port 9222. Reuses your active logins and sessions!
+                </span>
+                <span className="text-[10px] text-amber-400/80 block mt-1">
+                  💡 <strong>To reuse your logged-in profiles:</strong> You must close all active Chrome windows first, then run the <code>launch-chrome-cdp.bat</code> script and choose Option 1.
                 </span>
               </label>
             </div>

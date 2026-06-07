@@ -64,7 +64,7 @@ export class AIService {
     try {
       if (type === 'gemini') {
         const genAI = this.getClient(apiKey, 'gemini') as GoogleGenerativeAI;
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         const text = result.response.text();
         return this.cleanAndParseJson(text);
@@ -165,7 +165,7 @@ export class AIService {
     try {
       if (type === 'gemini') {
         const genAI = this.getClient(apiKey, 'gemini') as GoogleGenerativeAI;
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         const text = result.response.text();
         return this.cleanAndParseJson(text);
@@ -230,7 +230,7 @@ export class AIService {
     try {
       if (type === 'gemini') {
         const genAI = this.getClient(apiKey, 'gemini') as GoogleGenerativeAI;
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         return result.response.text().trim();
       } else {
@@ -294,7 +294,7 @@ export class AIService {
     try {
       if (type === 'gemini') {
         const genAI = this.getClient(apiKey, 'gemini') as GoogleGenerativeAI;
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent(prompt);
         const text = result.response.text();
         return this.cleanAndParseJson(text);

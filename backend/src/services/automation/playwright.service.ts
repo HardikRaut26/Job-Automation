@@ -1,6 +1,7 @@
 import { chromium, BrowserContext, Page } from "playwright";
 import path from "path";
 import fs from "fs";
+import { exec } from "child_process";
 import { AIService } from "../ai.service.js";
 
 export interface PlaywrightRunResult {
@@ -44,11 +45,28 @@ export class PlaywrightService {
           const contexts = browserCDP.contexts();
           context = contexts.length > 0 ? contexts[0] : null;
           if (!context) {
-            throw new Error("No active browser context found. Make sure Chrome is open with remote-debugging port 9222.");
+            throw new Error("No active browser context found.");
           }
           log("Successfully attached to active browser session!");
         } catch (cdpErr) {
-          log(`Failed to connect to active browser: ${(cdpErr as Error).message}. Falling back to launching dedicated context...`, true);
+          log(`Failed to connect to active browser: ${(cdpErr as Error).message}. Attempting to launch Chrome in debugging mode automatically...`);
+          
+          PlaywrightService.launchChromeCDP(log);
+          
+          // Wait 3.5 seconds for Chrome to initialize
+          await new Promise(r => setTimeout(r, 3500));
+          
+          try {
+            browserCDP = await chromium.connectOverCDP("http://127.0.0.1:9222");
+            const contexts = browserCDP.contexts();
+            context = contexts.length > 0 ? contexts[0] : null;
+            if (!context) {
+              throw new Error("Failed to attach to context on retry.");
+            }
+            log("Successfully launched and connected to Chrome debugging session!");
+          } catch (retryErr) {
+            log(`Failed to connect to active browser on retry: ${(retryErr as Error).message}. Falling back to launching dedicated context...`, true);
+          }
         }
       }
 
@@ -597,5 +615,36 @@ export class PlaywrightService {
       }
       return [];
     }
+  }
+
+  /**
+   * Helper to launch Chrome with remote debugging enabled
+   */
+  private static launchChromeCDP(log: LogCallback) {
+    const paths = [
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+      "chrome"
+    ];
+    
+    let chromePath = "";
+    for (const p of paths) {
+      if (fs.existsSync(p)) {
+        chromePath = p;
+        break;
+      }
+    }
+    
+    if (!chromePath) chromePath = "chrome";
+    
+    const profilePath = path.join(process.env.LOCALAPPDATA || "", "AppPilotChromeProfile");
+    const cmd = `"${chromePath}" --remote-debugging-port=9222 --user-data-dir="${profilePath}"`;
+    
+    log(`[CDP Launcher] Starting Chrome: ${cmd}`);
+    exec(cmd, (err) => {
+      if (err) {
+        console.warn("[CDP Launcher] Chrome execution warning:", err.message);
+      }
+    });
   }
 }

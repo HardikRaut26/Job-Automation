@@ -38,9 +38,9 @@ export class PlaywrightService {
 
     try {
       if (settings.useActiveBrowser) {
-        log("Connecting to active Chrome browser on http://localhost:9222...");
+        log("Connecting to active Chrome browser on http://127.0.0.1:9222...");
         try {
-          browserCDP = await chromium.connectOverCDP("http://localhost:9222");
+          browserCDP = await chromium.connectOverCDP("http://127.0.0.1:9222");
           const contexts = browserCDP.contexts();
           context = contexts.length > 0 ? contexts[0] : null;
           if (!context) {
@@ -82,7 +82,7 @@ export class PlaywrightService {
         if (headless) {
           throw new Error("Login required but browser is running in headless mode. Please toggle headful mode in Settings.");
         }
-        
+
         // Wait up to 5 minutes for user to login
         await page.waitForFunction(() => {
           // Check if login forms disappeared or we see user profile / main dashboard
@@ -99,14 +99,14 @@ export class PlaywrightService {
 
       // Run Form Filling automation
       const fillResult = await this.fillApplicationForm(page, profile, resume, job, settings, log);
-      
+
       if (!fillResult.success) {
         throw new Error(fillResult.error || "Failed to fill form fields");
       }
 
       if (isCoPilot) {
         log("Co-Pilot finished filling the form! Review the browser window to confirm, solve any captchas, and submit.");
-        
+
         // Wait for the page to close (user finishes and closes the tab)
         return new Promise<PlaywrightRunResult>((resolve) => {
           if (browserCDP) {
@@ -135,7 +135,7 @@ export class PlaywrightService {
           log("Submit clicked. Waiting for confirmation page...");
           await page.waitForTimeout(5000); // Wait for submission
           if (browserCDP) {
-            await page.close().catch(() => {});
+            await page.close().catch(() => { });
           } else {
             await context.close();
           }
@@ -143,7 +143,7 @@ export class PlaywrightService {
         } else {
           log("Could not find submit button automatically. Browser kept open for review.", true);
           if (browserCDP) {
-            await page.close().catch(() => {});
+            await page.close().catch(() => { });
           } else {
             await context.close();
           }
@@ -157,7 +157,7 @@ export class PlaywrightService {
         // In CDP mode, don't kill client's browser, just attempt closing the page
         // page might already be closed
       } else if (context) {
-        await context.close().catch(() => {});
+        await context.close().catch(() => { });
       }
       return { success: false, error: (err as Error).message };
     }
@@ -193,7 +193,7 @@ export class PlaywrightService {
 
       for (let i = 0; i < inputs.length; i++) {
         const el = inputs[i];
-        
+
         // Skip invisible or disabled elements
         if (!(await el.isVisible()) || await el.isDisabled()) continue;
 
@@ -209,14 +209,14 @@ export class PlaywrightService {
           // 1. Check if enclosed in a label tag
           const parentLabel = e.closest("label");
           if (parentLabel) return parentLabel.innerText;
-          
+
           // 2. Check for labeled-by
           const id = e.getAttribute("id");
           if (id) {
             const lEl = document.querySelector(`label[for="${id}"]`);
             if (lEl) return (lEl as HTMLElement).innerText;
           }
-          
+
           // 3. Search siblings
           const prevSibling = e.previousElementSibling;
           if (prevSibling && prevSibling.tagName.toLowerCase() === "label") {
@@ -228,7 +228,7 @@ export class PlaywrightService {
         });
 
         const label = labelText.trim().toLowerCase();
-        
+
         // --- 1. FILE UPLOAD (RESUME) ---
         if (type === "file" || label.includes("resume") || label.includes("cv") || name.includes("resume") || name.includes("cv")) {
           if (resume && resume.filePath && fs.existsSync(resume.filePath)) {
@@ -326,7 +326,7 @@ export class PlaywrightService {
       if (customQuestionsToAnswer.length > 0) {
         log(`Found ${customQuestionsToAnswer.length} open-ended custom questions. Generating AI answers...`);
         const questionStrings = customQuestionsToAnswer.map(q => q.question);
-        
+
         const apiKey = settings.geminiApiKey || settings.openaiApiKey || "";
         const apiType = settings.geminiApiKey ? "gemini" : "openai";
 
@@ -385,7 +385,7 @@ export class PlaywrightService {
       for (const opt of options) {
         const val = await opt.getAttribute("value") || "";
         const labelText = (await opt.innerText() || "").toLowerCase();
-        
+
         if (labelText.includes(text.toLowerCase()) || text.toLowerCase().includes(labelText)) {
           bestValue = val;
           break;

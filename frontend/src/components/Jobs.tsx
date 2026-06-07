@@ -7,8 +7,8 @@ import {
   Terminal as TerminalIcon, 
   X, 
   AlertCircle,
-  CheckCircle,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Plus
 } from "lucide-react";
 
 const BACKEND_URL = "http://localhost:5000";
@@ -51,6 +51,63 @@ export default function Jobs() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [activeJobTitle, setActiveJobTitle] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
+
+  // Modal states for adding custom/real jobs
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newJobTitle, setNewJobTitle] = useState("");
+  const [newJobCompany, setNewJobCompany] = useState("");
+  const [newJobUrl, setNewJobUrl] = useState("");
+  const [newJobPortal, setNewJobPortal] = useState("Indeed");
+  const [newJobDescription, setNewJobDescription] = useState("");
+  const [newJobSalary, setNewJobSalary] = useState("");
+  const [newJobLocation, setNewJobLocation] = useState("");
+  const [addLoading, setAddLoading] = useState(false);
+
+  const handleAddManualJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newJobTitle || !newJobCompany || !newJobUrl) {
+      alert("Please fill in Job Title, Company, and Job URL.");
+      return;
+    }
+
+    setAddLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/jobs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newJobTitle,
+          company: newJobCompany,
+          jobUrl: newJobUrl,
+          portal: newJobPortal,
+          description: newJobDescription,
+          salary: newJobSalary,
+          location: newJobLocation,
+          status: "DISCOVERED"
+        })
+      });
+
+      if (res.ok) {
+        setNewJobTitle("");
+        setNewJobCompany("");
+        setNewJobUrl("");
+        setNewJobDescription("");
+        setNewJobSalary("");
+        setNewJobLocation("");
+        setShowAddModal(false);
+        loadJobs();
+        alert("Real Job added successfully! You can now run Auto Apply on it.");
+      } else {
+        const errorData = await res.json();
+        alert("Failed to add job: " + errorData.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error saving manual job entry.");
+    } finally {
+      setAddLoading(false);
+    }
+  };
 
   const loadJobs = () => {
     setLoading(true);
@@ -208,15 +265,26 @@ export default function Jobs() {
           </div>
         </div>
 
-        {/* Discovery Scan Trigger */}
-        <button
-          onClick={triggerJobDiscovery}
-          disabled={scanning}
-          className="glow-btn bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />
-          <span>{scanning ? "Discovering..." : "Scan for Jobs"}</span>
-        </button>
+        {/* Actions */}
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center space-x-2 bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/35 border border-indigo-500/20 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Real Job URL</span>
+          </button>
+
+          {/* Discovery Scan Trigger */}
+          <button
+            onClick={triggerJobDiscovery}
+            disabled={scanning}
+            className="glow-btn bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${scanning ? "animate-spin" : ""}`} />
+            <span>{scanning ? "Discovering..." : "Scan for Jobs"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Jobs Listing */}
@@ -386,6 +454,133 @@ export default function Jobs() {
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
               <span className="font-semibold">Live connection</span>
             </span>
+          </div>
+        </div>
+      )}
+
+      {/* Add Custom/Real Job Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="glass-panel bg-[#0d0e12] border border-gray-800 w-full max-w-lg rounded-2xl flex flex-col overflow-hidden animate-zoom-in">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+              <h4 className="text-lg font-bold text-gray-100 flex items-center space-x-2">
+                <Plus className="h-5 w-5 text-indigo-400" />
+                <span>Add Real Job Application URL</span>
+              </h4>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1 hover:bg-gray-800 rounded-lg text-gray-500 hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleAddManualJob} className="p-6 space-y-4 text-left overflow-y-auto max-h-[75vh]">
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Job Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Senior Frontend Engineer"
+                  value={newJobTitle}
+                  onChange={(e) => setNewJobTitle(e.target.value)}
+                  className="w-full p-3 bg-gray-900/50 border border-gray-800 rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:border-indigo-500 outline-none transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Company Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Google"
+                    value={newJobCompany}
+                    onChange={(e) => setNewJobCompany(e.target.value)}
+                    className="w-full p-3 bg-gray-900/50 border border-gray-800 rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:border-indigo-500 outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Job Portal / Board</label>
+                  <select
+                    value={newJobPortal}
+                    onChange={(e) => setNewJobPortal(e.target.value)}
+                    className="w-full p-3 bg-gray-900/50 border border-gray-800 rounded-xl text-sm text-gray-200 focus:border-indigo-500 outline-none cursor-pointer"
+                  >
+                    <option value="LinkedIn" className="bg-[#0b0c10]">LinkedIn</option>
+                    <option value="Indeed" className="bg-[#0b0c10]">Indeed</option>
+                    <option value="Naukri" className="bg-[#0b0c10]">Naukri</option>
+                    <option value="Internshala" className="bg-[#0b0c10]">Internshala</option>
+                    <option value="Other" className="bg-[#0b0c10]">Other / Company Page</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Real Application URL *</label>
+                <input
+                  type="url"
+                  required
+                  placeholder="https://jobportal.com/apply/..."
+                  value={newJobUrl}
+                  onChange={(e) => setNewJobUrl(e.target.value)}
+                  className="w-full p-3 bg-gray-900/50 border border-gray-800 rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:border-indigo-500 outline-none transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Location</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Mumbai, Remote"
+                    value={newJobLocation}
+                    onChange={(e) => setNewJobLocation(e.target.value)}
+                    className="w-full p-3 bg-gray-900/50 border border-gray-800 rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:border-indigo-500 outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Salary Range</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 15,00,000 INR"
+                    value={newJobSalary}
+                    onChange={(e) => setNewJobSalary(e.target.value)}
+                    className="w-full p-3 bg-gray-900/50 border border-gray-800 rounded-xl text-sm text-gray-200 placeholder-gray-600 focus:border-indigo-500 outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Job Description (Highly Recommended for Match Score & AI Solver)</label>
+                <textarea
+                  placeholder="Paste the full job description details here..."
+                  rows={4}
+                  value={newJobDescription}
+                  onChange={(e) => setNewJobDescription(e.target.value)}
+                  className="w-full p-3 bg-gray-900/50 border border-gray-800 rounded-xl text-xs text-gray-200 placeholder-gray-600 focus:border-indigo-500 outline-none transition-colors resize-none"
+                ></textarea>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-semibold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addLoading}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {addLoading ? "Saving..." : "Add Job"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

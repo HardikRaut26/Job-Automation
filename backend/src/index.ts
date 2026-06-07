@@ -269,14 +269,66 @@ app.get("/api/jobs", async (req, res) => {
 app.post("/api/jobs", async (req, res) => {
   try {
     const { title, company, location, portal, jobUrl, description, salary, status } = req.body;
+    
+    // Fetch profile and settings to calculate scores
+    const profile = await prisma.profile.findFirst();
+    const settings = await prisma.globalSettings.findUnique({ where: { id: "global_config" } });
+    
+    let scores = { skillScore: 70, experienceScore: 70, locationScore: 70, salaryScore: 70, overallScore: 70 };
+    
+    if (profile && settings) {
+      const apiKey = settings.geminiApiKey || settings.openaiApiKey || "";
+      const apiType = settings.geminiApiKey ? "gemini" : "openai";
+      
+      try {
+        if (apiKey && apiKey.trim() !== "" && apiKey !== "undefined" && apiKey !== "null") {
+          scores = await AIService.calculateMatchScore(
+            title,
+            description || "",
+            profile,
+            apiKey,
+            apiType
+          );
+        } else {
+          // Local heuristic matching score logic
+          const preferredRoles = Array.isArray(profile.preferredRoles) ? profile.preferredRoles : [];
+          const skills = Array.isArray(profile.skills) ? profile.skills : [];
+          
+          const titleMatches = preferredRoles.some((role: string) => title.toLowerCase().includes(role.toLowerCase()));
+          const skillMatchesCount = skills.filter((skill: string) => (description || "").toLowerCase().includes(skill.toLowerCase())).length;
+          
+          const skillScore = Math.min(60 + (skillMatchesCount * 5), 100);
+          const experienceScore = 80;
+          const locationScore = 90;
+          const salaryScore = 85;
+          const overallScore = Math.round((skillScore * 0.4) + (experienceScore * 0.2) + (locationScore * 0.2) + (salaryScore * 0.2));
+          scores = { skillScore, experienceScore, locationScore, salaryScore, overallScore };
+        }
+      } catch (err) {
+        console.warn("Failed to calculate score for manual job:", err);
+      }
+    }
+
     const job = await prisma.job.create({
       data: {
-        title, company, location, portal, jobUrl, description, salary, status
+        title,
+        company,
+        location: location || "Remote",
+        portal: portal || "Other",
+        jobUrl,
+        description: description || "No description provided.",
+        salary: salary || "Not specified",
+        status: status || "DISCOVERED",
+        skillScore: scores.skillScore,
+        experienceScore: scores.experienceScore,
+        locationScore: scores.locationScore,
+        salaryScore: scores.salaryScore,
+        overallScore: scores.overallScore
       }
     });
     res.json(job);
   } catch (error) {
-    res.status(500).json({ error: "Failed to create manual job entry" });
+    res.status(500).json({ error: "Failed to create manual job entry: " + (error as Error).message });
   }
 });
 

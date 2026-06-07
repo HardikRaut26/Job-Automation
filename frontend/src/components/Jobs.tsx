@@ -51,7 +51,6 @@ export default function Jobs() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [activeJobTitle, setActiveJobTitle] = useState("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [logPollingInterval, setLogPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
   const loadJobs = () => {
     setLoading(true);

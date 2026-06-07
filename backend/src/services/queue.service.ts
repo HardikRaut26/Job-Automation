@@ -41,8 +41,8 @@ export class QueueService {
     });
 
     // 1. Initialize Queues
-    discoveryQueue = new Queue("job-discovery", { connection: redisConnection });
-    applicationQueue = new Queue("job-applications", { connection: redisConnection });
+    discoveryQueue = new Queue("job-discovery", { connection: redisConnection as any });
+    applicationQueue = new Queue("job-applications", { connection: redisConnection as any });
 
     // 2. Initialize Workers
     this.startWorkers();
@@ -190,7 +190,7 @@ export class QueueService {
         console.log(`[Queue] Job Discovery complete! Found ${addedCount} matching jobs.`);
         return { addedCount };
       },
-      { connection: redisConnection }
+      { connection: redisConnection as any }
     );
 
     // Application Worker: Automates submitting a job application using Playwright
@@ -300,7 +300,7 @@ export class QueueService {
           throw err;
         }
       },
-      { connection: redisConnection }
+      { connection: redisConnection as any }
     );
 
     discoveryWorker.on("failed", (job, err) => {

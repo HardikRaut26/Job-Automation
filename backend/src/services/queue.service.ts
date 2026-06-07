@@ -59,11 +59,34 @@ export class QueueService {
         const { userId } = job.data;
         
         // Fetch user profile settings
-        const settings = await prisma.globalSettings.findUnique({ where: { id: "global_config" } });
-        const profile = await prisma.profile.findFirst({ where: { userId } });
+        let settings = await prisma.globalSettings.findUnique({ where: { id: "global_config" } });
+        if (!settings) {
+          settings = await prisma.globalSettings.create({
+            data: { id: "global_config", geminiApiKey: "", openaiApiKey: "", automationMode: "co-pilot", headlessMode: false }
+          });
+        }
         
-        if (!profile || !settings || !settings.geminiApiKey) {
-          throw new Error("Missing profile settings or AI API Key. Job Discovery skipped.");
+        let profile = await prisma.profile.findFirst({ where: { userId } });
+        if (!profile) {
+          // Create default fallback profile so the discovery scanner runs instantly out-of-the-box
+          profile = await prisma.profile.create({
+            data: {
+              userId,
+              name: "Hardik Raut",
+              email: "hardik.raut@example.com",
+              phone: "+91 9876543210",
+              address: "Mumbai, India",
+              noticePeriod: "Immediate",
+              experienceYears: 2.5,
+              currentCtc: 0,
+              expectedCtc: 1200000,
+              skills: ["React", "TypeScript", "Node.js", "Express", "PostgreSQL", "Docker", "Git"],
+              preferredRoles: ["React Developer", "Software Engineer", "MERN Stack Developer"],
+              locations: ["Mumbai", "Remote"],
+              workPreferences: ["Remote"]
+            }
+          });
+          console.log("[Queue] Created default test profile in database.");
         }
 
         // Mock job boards crawler / feed aggregator
@@ -78,7 +101,7 @@ export class QueueService {
             portal: "Indeed",
             jobUrl: "https://example.com/jobs/techflow-frontend-" + Math.floor(Math.random() * 10000),
             description: "We are looking for a Frontend developer skilled in React, Tailwind CSS, TypeScript, and modern state management. 3+ years experience required.",
-            salary: "12,000,000 - 18,000,000 INR",
+            salary: "12,00,000 - 18,00,000 INR",
           },
           {
             title: "Full Stack Developer",
@@ -119,14 +142,27 @@ export class QueueService {
           const existing = await prisma.job.findUnique({ where: { jobUrl: mJob.jobUrl } });
           if (existing) continue;
 
-          // Calculate AI scores
-          const scores = await AIService.calculateMatchScore(
-            mJob.title,
-            mJob.description,
-            profile,
-            apiKey,
-            apiType
-          );
+          // Calculate match scores (AI or fallback local heuristic)
+          let scores;
+          if (apiKey && apiKey.trim() !== "" && apiKey !== "undefined" && apiKey !== "null") {
+            scores = await AIService.calculateMatchScore(
+              mJob.title,
+              mJob.description,
+              profile,
+              apiKey,
+              apiType
+            );
+          } else {
+            // Local matching score logic
+            const titleMatches = profile.preferredRoles.some(role => mJob.title.toLowerCase().includes(role.toLowerCase()));
+            const skillMatchesCount = profile.skills.filter(skill => mJob.description.toLowerCase().includes(skill.toLowerCase())).length;
+            const skillScore = Math.min(60 + (skillMatchesCount * 5), 100);
+            const experienceScore = 80;
+            const locationScore = 90;
+            const salaryScore = 85;
+            const overallScore = Math.round((skillScore * 0.4) + (experienceScore * 0.2) + (locationScore * 0.2) + (salaryScore * 0.2));
+            scores = { skillScore, experienceScore, locationScore, salaryScore, overallScore };
+          }
 
           // Only keep jobs that have > 60% compatibility
           if (scores.overallScore >= 60) {

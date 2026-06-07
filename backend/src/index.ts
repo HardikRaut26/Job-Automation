@@ -18,6 +18,7 @@ const PORT = process.env.PORT || 5000;
 // Enable CORS for frontend requests
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(process.cwd(), "public")));
 
 // Set up resume uploads folder
 const uploadsDir = path.join(process.cwd(), "uploads");

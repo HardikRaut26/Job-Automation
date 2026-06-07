@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mock Job Application Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6;
+            padding: 40px;
+            color: #333;
+        }
+        .container {
+            max-width: 500px;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin: 0 auto;
+        }
+        h2 { margin-top: 0; color: #111; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 6px; font-weight: bold; font-size: 14px; }
+        input[type="text"], input[type="email"], select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4f46e5;
+            color: #fff;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+        button:hover { background-color: #4338ca; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Job Application Form</h2>
+        <p style="color: #666; font-size: 13px; margin-bottom: 25px;">Please fill in your details below to apply.</p>
+        
+        <form id="app-form" onsubmit="event.preventDefault(); alert('Application submitted successfully!');">
+            <div class="form-group">
+                <label for="fullname">Full Name</label>
+                <input type="text" id="fullname" name="fullname" placeholder="John Doe">
+            </div>
+
+            <div class="form-group">
+                <label for="email-address">Email Address</label>
+                <input type="email" id="email-address" name="email" placeholder="john.doe@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="phone-number">Phone Number</label>
+                <input type="text" id="phone-number" name="phone" placeholder="+91 9876543210">
+            </div>
+
+            <div class="form-group">
+                <label for="expected-ctc">Expected CTC (INR / Year)</label>
+                <input type="text" id="expected-ctc" name="expected_salary" placeholder="12,00,000">
+            </div>
+
+            <div class="form-group">
+                <label for="notice-period">Notice Period</label>
+                <select id="notice-period" name="notice_period">
+                    <option value="">Select notice period</option>
+                    <option value="immediate">Immediate</option>
+                    <option value="15days">15 Days</option>
+                    <option value="30days">30 Days</option>
+                    <option value="90days">90 Days</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="resume-upload">Upload Resume (PDF)</label>
+                <input type="file" id="resume-upload" name="resume">
+            </div>
+
+            <div class="form-group">
+                <label for="join-reason">Why do you want to join our engineering team?</label>
+                <textarea id="join-reason" name="join_reason" rows="4" placeholder="Briefly describe your motivation..."></textarea>
+            </div>
+
+            <button type="submit">Submit Application</button>
+        </form>
+    </div>
+</body>
+</html>

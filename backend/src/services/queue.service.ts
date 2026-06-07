@@ -90,6 +90,15 @@ export class QueueService {
             salary: "15,000,000 INR",
           },
           {
+            title: "MERN Stack Developer",
+            company: "Apex Global Solutions",
+            location: "Mumbai",
+            portal: "Naukri",
+            jobUrl: "https://example.com/jobs/apex-naukri-" + Math.floor(Math.random() * 10000),
+            description: "MERN developer with strong expertise in Express, React, Node.js, and MongoDB/PostgreSQL database management. Minimum 2 years experience.",
+            salary: "10,00,000 - 14,00,000 INR",
+          },
+          {
             title: "Software Engineer Intern",
             company: "Antigravity Corp",
             location: "Bangalore",

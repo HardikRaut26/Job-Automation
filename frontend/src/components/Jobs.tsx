@@ -189,6 +189,7 @@ export default function Jobs() {
               <option value="all" className="bg-[#0b0c10]">All Portals</option>
               <option value="linkedin" className="bg-[#0b0c10]">LinkedIn</option>
               <option value="indeed" className="bg-[#0b0c10]">Indeed</option>
+              <option value="naukri" className="bg-[#0b0c10]">Naukri</option>
               <option value="internshala" className="bg-[#0b0c10]">Internshala</option>
             </select>
           </div>

@@ -1,0 +1,107 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  profile   Profile?
+}
+
+model Profile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  email           String
+  phone           String
+  address         String
+  noticePeriod    String   // e.g. "Immediate", "30 days"
+  experienceYears Float
+  currentCtc      Float
+  expectedCtc     Float
+  skills          String[] // Array of strings (Prisma supports this natively in Postgres)
+  preferredRoles  String[]
+  locations       String[]
+  workPreferences String[] // e.g. ["Remote", "Hybrid"]
+  githubProfile   String?
+  linkedinProfile String?
+  portfolioLinks  String[]
+  coverLetterTpl  String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Resume {
+  id           String   @id @default(uuid())
+  fileName     String
+  filePath     String
+  extractedText String? @db.Text
+  isParsed     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+enum JobStatus {
+  DISCOVERED
+  APPLIED
+  UNDER_REVIEW
+  INTERVIEW_SCHEDULED
+  REJECTED
+  OFFER_RECEIVED
+}
+
+model Job {
+  id                 String       @id @default(uuid())
+  title              String
+  company            String
+  location           String
+  portal             String       // e.g. "LinkedIn", "Indeed"
+  jobUrl             String       @unique
+  description        String       @db.Text
+  salary             String?
+  postingDate        DateTime?
+  skillScore         Float        @default(0)
+  experienceScore    Float        @default(0)
+  locationScore      Float        @default(0)
+  salaryScore        Float        @default(0)
+  overallScore       Float        @default(0)
+  status             JobStatus    @default(DISCOVERED)
+  appliedAt          DateTime?
+  resumeUsedId       String?
+  coverLetterUsed    String?      @db.Text
+  notes              String?      @db.Text
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  logs               AppLog[]
+}
+
+model AppLog {
+  id        String   @id @default(uuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  level     String   // "info", "warn", "error"
+  message   String   @db.Text
+  timestamp DateTime @default(now())
+}
+
+model GlobalSettings {
+  id                String   @id @default("global_config")
+  geminiApiKey      String?
+  openaiApiKey      String?
+  notificationType  String   @default("none") // "telegram", "discord", "email", "none"
+  notificationToken String?
+  notificationChatId String?
+  automationMode    String   @default("co-pilot") // "co-pilot", "autonomous"
+  headlessMode      Boolean  @default(false)
+  scheduleInterval  String   @default("manual") // "manual", "hourly", "daily", "weekly"
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}

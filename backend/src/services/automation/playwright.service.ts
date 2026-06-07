@@ -404,4 +404,198 @@ export class PlaywrightService {
       console.warn("Could not select dropdown value:", err);
     }
   }
+
+  /**
+   * Scrapes real job listings from LinkedIn, Indeed, Naukri, and Internshala
+   */
+  static async discoverRealJobs(
+    profile: any,
+    settings: any,
+    log: LogCallback
+  ): Promise<any[]> {
+    const role = profile.preferredRoles?.[0] || "Software Engineer";
+    const location = profile.locations?.[0] || "India";
+
+    log(`[Crawler] Starting real jobs search for role: "${role}" in location: "${location}"...`);
+
+    let context: BrowserContext | null = null;
+    let browserCDP: any = null;
+
+    try {
+      if (settings.useActiveBrowser) {
+        log("[Crawler] Connecting to active Chrome browser on http://127.0.0.1:9222...");
+        try {
+          browserCDP = await chromium.connectOverCDP("http://127.0.0.1:9222");
+          const contexts = browserCDP.contexts();
+          context = contexts.length > 0 ? contexts[0] : null;
+        } catch (cdpErr) {
+          log(`[Crawler] Failed to connect to active browser: ${(cdpErr as Error).message}. Launching dedicated context...`, true);
+        }
+      }
+
+      if (!context) {
+        context = await chromium.launchPersistentContext(path.join(process.cwd(), "userdata", "crawler"), {
+          channel: "chrome",
+          headless: true,
+          viewport: { width: 1280, height: 800 },
+          args: [
+            "--disable-blink-features=AutomationControlled",
+            "--start-maximized"
+          ]
+        });
+      }
+
+      const page = await context.newPage();
+      
+      // Override webdriver
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+      });
+
+      const allFoundJobs: any[] = [];
+
+      // 1. LinkedIn Search
+      try {
+        log("[Crawler] Searching LinkedIn...");
+        await page.goto(`https://www.linkedin.com/jobs/search?keywords=${encodeURIComponent(role)}&location=${encodeURIComponent(location)}`, { waitUntil: "domcontentloaded", timeout: 20000 });
+        await page.waitForTimeout(2000);
+        const liJobs = await page.evaluate(() => {
+          const items = Array.from(document.querySelectorAll("div.base-card, li.jobs-search-results__list-item, .jobs-search__results-list li"));
+          return items.slice(0, 3).map(el => {
+            const titleEl = el.querySelector(".base-search-card__title, .job-card-list__title, h3, h4");
+            const companyEl = el.querySelector(".base-search-card__subtitle, .job-card-container__company-name, .company-name");
+            const locEl = el.querySelector(".job-search-card__location, .job-card-container__metadata-item, .location");
+            const linkEl = el.querySelector("a.base-card__full-link, a.job-card-list__title, a");
+            
+            return {
+              title: titleEl ? titleEl.textContent?.trim() || "Software Engineer" : "Software Engineer",
+              company: companyEl ? companyEl.textContent?.trim() || "Tech Company" : "Tech Company",
+              location: locEl ? locEl.textContent?.trim() || "India" : "India",
+              portal: "LinkedIn",
+              jobUrl: linkEl ? (linkEl as HTMLAnchorElement).href : "https://www.linkedin.com/jobs",
+              description: "Real job listing found on LinkedIn. Match calculated by profile preferences.",
+              salary: "Not specified"
+            };
+          });
+        });
+        allFoundJobs.push(...liJobs);
+        log(`[Crawler] Found ${liJobs.length} jobs on LinkedIn.`);
+      } catch (err) {
+        log(`[Crawler] LinkedIn crawl failed: ${(err as Error).message}`, true);
+      }
+
+      // 2. Naukri Search
+      try {
+        log("[Crawler] Searching Naukri...");
+        const kQuery = role.replace(/\s+/g, "-");
+        await page.goto(`https://www.naukri.com/${kQuery}-jobs-in-india`, { waitUntil: "domcontentloaded", timeout: 20000 });
+        await page.waitForTimeout(3000);
+        const nkJobs = await page.evaluate(() => {
+          const items = Array.from(document.querySelectorAll(".srp-jobtuple, .jobTuple"));
+          return items.slice(0, 3).map(el => {
+            const titleEl = el.querySelector("a.title");
+            const companyEl = el.querySelector("a.comp-name, .comp-name-container");
+            const locEl = el.querySelector(".loc-wrap, .locWrap");
+            const linkEl = el.querySelector("a.title");
+            const descEl = el.querySelector(".job-desc, .jobDescription");
+            
+            return {
+              title: titleEl ? titleEl.textContent?.trim() || "Software Developer" : "Software Developer",
+              company: companyEl ? companyEl.textContent?.trim() || "Naukri Employer" : "Naukri Employer",
+              location: locEl ? locEl.textContent?.trim() || "India" : "India",
+              portal: "Naukri",
+              jobUrl: linkEl ? (linkEl as HTMLAnchorElement).href : "https://www.naukri.com",
+              description: descEl ? descEl.textContent?.trim() || "Real job listing found on Naukri." : "Real job listing found on Naukri.",
+              salary: "Not specified"
+            };
+          });
+        });
+        allFoundJobs.push(...nkJobs);
+        log(`[Crawler] Found ${nkJobs.length} jobs on Naukri.`);
+      } catch (err) {
+        log(`[Crawler] Naukri crawl failed: ${(err as Error).message}`, true);
+      }
+
+      // 3. Indeed Search
+      try {
+        log("[Crawler] Searching Indeed...");
+        await page.goto(`https://in.indeed.com/jobs?q=${encodeURIComponent(role)}&l=${encodeURIComponent(location)}`, { waitUntil: "domcontentloaded", timeout: 20000 });
+        await page.waitForTimeout(3000);
+        const idJobs = await page.evaluate(() => {
+          const items = Array.from(document.querySelectorAll("div.job_seen_beacon, td.resultContent"));
+          return items.slice(0, 3).map(el => {
+            const titleEl = el.querySelector("h2.jobTitle a, a[id^='job_']");
+            const companyEl = el.querySelector("span[data-testid='company-name'], .companyName");
+            const locEl = el.querySelector("div[data-testid='text-location'], .companyLocation");
+            const linkEl = el.querySelector("h2.jobTitle a, a[id^='job_']");
+            const descEl = el.querySelector(".job-snippet, .summary");
+            
+            return {
+              title: titleEl ? titleEl.textContent?.trim() || "Developer" : "Developer",
+              company: companyEl ? companyEl.textContent?.trim() || "Indeed Employer" : "Indeed Employer",
+              location: locEl ? locEl.textContent?.trim() || "India" : "India",
+              portal: "Indeed",
+              jobUrl: linkEl ? (linkEl as HTMLAnchorElement).href : "https://in.indeed.com",
+              description: descEl ? descEl.textContent?.trim() || "Real job listing found on Indeed." : "Real job listing found on Indeed.",
+              salary: "Not specified"
+            };
+          });
+        });
+        allFoundJobs.push(...idJobs);
+        log(`[Crawler] Found ${idJobs.length} jobs on Indeed.`);
+      } catch (err) {
+        log(`[Crawler] Indeed crawl failed: ${(err as Error).message}`, true);
+      }
+
+      // 4. Internshala Search
+      try {
+        log("[Crawler] Searching Internshala...");
+        await page.goto(`https://internshala.com/jobs/keywords-${encodeURIComponent(role)}`, { waitUntil: "domcontentloaded", timeout: 20000 });
+        await page.waitForTimeout(2000);
+        const isJobs = await page.evaluate(() => {
+          const items = Array.from(document.querySelectorAll(".individual_internship"));
+          return items.slice(0, 3).map(el => {
+            const titleEl = el.querySelector(".heading_4_5 a");
+            const companyEl = el.querySelector(".company_name");
+            const locEl = el.querySelector(".location_names");
+            const linkEl = el.querySelector(".heading_4_5 a");
+            
+            return {
+              title: titleEl ? titleEl.textContent?.trim() || "Software Engineer Intern" : "Software Engineer Intern",
+              company: companyEl ? companyEl.textContent?.trim() || "Internshala Partner" : "Internshala Partner",
+              location: locEl ? locEl.textContent?.trim() || "India" : "India",
+              portal: "Internshala",
+              jobUrl: linkEl ? (linkEl as HTMLAnchorElement).href : "https://internshala.com",
+              description: "Real internship listing found on Internshala.",
+              salary: "Not specified"
+            };
+          });
+        });
+        allFoundJobs.push(...isJobs);
+        log(`[Crawler] Found ${isJobs.length} jobs on Internshala.`);
+      } catch (err) {
+        log(`[Crawler] Internshala crawl failed: ${(err as Error).message}`, true);
+      }
+
+      await page.close().catch(() => {});
+      if (!browserCDP && context) {
+        await context.close().catch(() => {});
+      }
+
+      // Filter out duplicate URLs or empty objects
+      const uniqueJobs = allFoundJobs.filter((job, idx, self) => 
+        job && job.jobUrl && self.findIndex(j => j.jobUrl === job.jobUrl) === idx
+      );
+
+      log(`[Crawler] Search completed. Crawled ${uniqueJobs.length} unique jobs in total.`);
+      return uniqueJobs;
+
+    } catch (crawlerErr) {
+      log(`[Crawler] Search failed: ${(crawlerErr as Error).message}`, true);
+      if (!browserCDP && context) {
+        await context.close().catch(() => {});
+      }
+      return [];
+    }
+  }
 }
